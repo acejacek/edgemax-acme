@@ -2,17 +2,17 @@
 
 This repository is heavily based on [https://github.com/j-c-m/ubnt-letsencrypt/](https://github.com/j-c-m/ubnt-letsencrypt/). It's a simpler version to generate and automatically renew SSL certificate from [Let's Encrypt](https://letsencrypt.org/) without reconfiguring firewall and exposing any port to the internet. This is beneficial especially in restricted network (behind firewall or double NAT) or non-available required ports (i.e., 80, 443 - used by other services).
 
-It does require DNS API access from the DNS provider. The list of supported DNS provider can be found from [acme.sh wiki page](https://github.com/Neilpang/acme.sh#9-automatic-dns-api-integration).
+It does require DNS API access from the DNS provider. The list of supported DNS provider can be found from [acme.sh wiki page](https://github.com/acmesh-official/acme.sh#8-automatic-dns-api-integration).
 
 ## Requirements
 
 1. Determine required scripts
 
-	First, you need to validate if your DNS provider is supported by [acme.sh dnsapi](https://github.com/Neilpang/acme.sh/tree/master/dnsapi). To minimize the space needed, you only need to install the corresponding API script to your router. For example, GoDaddy only needs `dns_gd.sh`.
+	First, you need to validate if your DNS provider is supported by [acme.sh dnsapi](https://github.com/acmesh-official/acme.sh/tree/master/dnsapi). To minimize the space needed, you only need to install the corresponding API script to your router. For example, GoDaddy only needs `dns_gd.sh`.
 
 2. Obtain API login information from DNS provider
 
-	Follow the instruction from [acme.sh dnsapi](https://github.com/Neilpang/acme.sh/tree/master/dnsapi) to get your API login information. Also take note the required tags, e.g., `GD_Key` and `GD_Secret` for GoDaddy.
+	Follow the instruction from [acme.sh dnsapi](https://github.com/acmesh-official/acme.sh/tree/master/dnsapi) to get your API login information. Also take note the required tags, e.g., `GD_Key` and `GD_Secret` for GoDaddy.
 
 ## Install scripts
 
@@ -20,10 +20,10 @@ You'll install `acme.sh`, `renew.acme.sh`, `reload.acme.sh`, and the correspondi
 
 ```
 mkdir -p /config/scripts/acme/dnsapi
-curl -o /config/scripts/acme/acme.sh https://raw.githubusercontent.com/Neilpang/acme.sh/master/acme.sh
+curl -o /config/scripts/acme/acme.sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh
 curl -o /config/scripts/renew.acme.sh https://raw.githubusercontent.com/hungnguyenm/edgemax-acme/master/renew.acme.sh
 curl -o /config/scripts/reload.acme.sh https://raw.githubusercontent.com/hungnguyenm/edgemax-acme/master/reload.acme.sh
-curl -o /config/scripts/acme/dnsapi/[yourdnsapi].sh https://raw.githubusercontent.com/Neilpang/acme.sh/master/dnsapi/[yourdnsapi].sh
+curl -o /config/scripts/acme/dnsapi/[yourdnsapi].sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/dnsapi/[yourdnsapi].sh
 chmod 755 /config/scripts/acme/acme.sh /config/scripts/renew.acme.sh /config/scripts/reload.acme.sh /config/scripts/acme/dnsapi/[yourdnsapi].sh
 ```
 
@@ -33,20 +33,25 @@ Remember to replace `[yourdnsapi]` with your DNS provider script file name from 
 
 `renew.acme.sh` requires the following options:
 - `-d` (required) is the domain to issue certificate. You can add multiple domains by repeating this option.
-- `-n` (required) is the DNS provider id. It is the same with your DNS API script from [acme.sh dnsapi](https://github.com/Neilpang/acme.sh/tree/master/dnsapi).
+- `-n` (required) is the DNS provider id. It is the same with your DNS API script from [acme.sh dnsapi](https://github.com/acmesh-official/acme.sh/tree/master/dnsapi).
 - `-t` (required) is the corresponding API tag. For example, `GD_Key` and `GD_Secret` for GoDaddy.
 - `-k` (required) is the corresponding value for API tag. The number of `-t` and `-k` must be the same, and tag/key are matched based on index.
 - `-i` (optional) flag to enable insecure mode.
 - `-v` (optional) flag to enable acme verbose.
 
-The command below works for GoDaddy DNS:
+As ACME now prevents `acme.sh` to be called with sudo, we'd need to switch to root user before running the script the first time:
 ```
-sudo /config/scripts/renew.acme.sh -d subdomain.example.com -n dns_gd -t "GD_Key" -t "GD_Secret" -k "sdfsdfsdfljlbjkljlkjsdfoiwje" -k "asdfsdafdsfdsfdsfdsfdsafd"
+sudo su
 ```
 
-If you need extra arguments to acme.sh (perhaps for a [challenge alias](https://github.com/Neilpang/acme.sh/wiki/DNS-alias-mode)) specify them at the end after a ```--```:
+With the root shell, the command below works for GoDaddy DNS:
 ```
-sudo /config/scripts/renew.acme.sh -d subdomain.example.com -n dns_gd -t "GD_Key" -t "GD_Secret" -k "sdfsdfsdfljlbjkljlkjsdfoiwje" -k "asdfsdafdsfdsfdsfdsfdsafd" -- --challenge-alias challenge-domain.example.com
+/config/scripts/renew.acme.sh -d subdomain.example.com -n dns_gd -t "GD_Key" -t "GD_Secret" -k "sdfsdfsdfljlbjkljlkjsdfoiwje" -k "asdfsdafdsfdsfdsfdsfdsafd"
+```
+
+If you need extra arguments to acme.sh (perhaps for a [challenge alias](https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode)) specify them at the end after a ```--```:
+```
+/config/scripts/renew.acme.sh -d subdomain.example.com -n dns_gd -t "GD_Key" -t "GD_Secret" -k "sdfsdfsdfljlbjkljlkjsdfoiwje" -k "asdfsdafdsfdsfdsfdsfdsafd" -- --challenge-alias challenge-domain.example.com
 ```
 
 ## Configure router
@@ -94,6 +99,7 @@ set system task-scheduler task renew.acme executable arguments '-d subdomain.exa
 ## Changelog
 
 ```
+2020-01-17: Update the first-time command to fix sudo error from acme.sh
 2018-09-14: Add an option for providing arbitrary arguments to acme.sh
 2018-04-22: Change RSA certificate to ECDSA P-384; Set default log to /var/log/acme.log
 2017-12-21: Add -i and -v options in renew.acme.sh
